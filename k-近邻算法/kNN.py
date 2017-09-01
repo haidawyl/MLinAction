@@ -12,12 +12,15 @@ def createDataSet():
     labels = ['A', 'A', 'B', 'B']
     return group, labels
 
-# k-近邻算法
 def classify0(inX, dataSet, labels, k):
-    ''' inX: 预测分类的输入向量
-        dataSet: 输入的训练样本集
-        labels: 训练样本集对应的标签向量, 元素数与dataSet的行数相同
-        k: 选择最近邻居的数目 '''
+    '''
+    k-近邻算法
+    :param inX: 预测分类的输入向量
+    :param dataSet: 输入的训练样本集
+    :param labels: 训练样本集对应的标签向量, 元素数与dataSet的行数相同
+    :param k: 选择最近邻居的数目
+    :return: 发生频率最高的元素标签
+    '''
     # dataSet.shape = (行数, 列数), 本例为(4, 2)
     dataSetSize = dataSet.shape[0]
 
@@ -68,8 +71,12 @@ def classify0(inX, dataSet, labels, k):
     sortedClassCount = sorted(classCount.iteritems(), key=operator.itemgetter(1), reverse=True)
     return sortedClassCount[0][0] # 返回发生频率最高的元素标签
 
-# 将文本记录转换为NumPy的解析程序
 def file2matrix(filename):
+    '''
+    将文本记录转换为NumPy的解析程序
+    :param filename: 文件路径
+    :return: 特征矩阵和类标签向量
+    '''
     fr = open(filename) # 打开文件
     arrayOLines = fr.readlines() # 读取文件所有行
     numberOfLines = len(arrayOLines) # 得到文件行数
@@ -85,10 +92,12 @@ def file2matrix(filename):
         index += 1 # 行索引index+1
     return returnMat, classLabelVector # 返回特征矩阵和类标签向量
 
-# 归一化特征值
 def autoNorm(dataSet):
     '''
+    归一化特征值
     将数字特征值转化为0到1的区间, 转换公式为: newValue = (oldValue-min)/(max-min)
+    :param dataSet: 待归一化特征值的样本数据
+    :return: 数值归一化后的样本数据矩阵、取值范围数组和最小值数组
     '''
     # m, n = np.shape(dataSet)[0], np.shape(dataSet)[1] # (m,n)矩阵
     minVals = dataSet.min(0) # 参数0指示函数从列中选取最小值, 而不是选取当前行的最小值, 结果为(1,n)矩阵
@@ -100,8 +109,11 @@ def autoNorm(dataSet):
     normDataSet = normDataSet / np.tile(ranges, (m, 1)) # 计算(oldValue-min)/(max-min)
     return normDataSet, ranges, minVals # 返回数值归一化后的样本数据矩阵、取值范围数组和最小值数组
 
-# 分类器针对约会网站的测试代码
 def datingClassTest():
+    '''
+    分类器针对约会网站的测试代码
+    :return:
+    '''
     hoRatio = 0.10 # 测试数据比例
     datingDataMat, datingLabels = file2matrix('datingTestSet2.txt')
     normMat, ranges, minVals = autoNorm(datingDataMat) # 将数据转换为归一化特征值
@@ -116,8 +128,11 @@ def datingClassTest():
         if (classifierResult != datingLabels[i]): errorCount += 1.0 # 预测分类与实际分类不符时错误数errorCount+1
     print "the total error rate is: %f" % (errorCount/float(numTestVecs)) # 输出错误率
 
-# 约会网站预测函数
 def classifyPerson():
+    '''
+    约会网站预测函数
+    :return:
+    '''
     resultList = ['not at all', 'in small doses', 'in large doses']
     # raw_input(): 该函数在标准输出窗口输出参数中的文本内容并返回用户所输入的内容
     percentTats = float(raw_input('percentage of time spent playing video games?'))
@@ -131,6 +146,10 @@ def classifyPerson():
     print 'You will probably like this person: ', resultList[classifierResult - 1]
 
 def img2vector(filename):
+    '''
+    :param filename: 文件路径
+    :return:
+    '''
     returnVect = np.zeros((1, 1024)) # 创建以0填充的(1,1024)矩阵
     fr = open(filename) # 打开文件
     # 遍历文件的前32行
@@ -141,8 +160,11 @@ def img2vector(filename):
             returnVect[0, 32*i+j] = int(lineStr[j]) # 将(32,32)的矩阵转换为(1,1024)的矩阵
     return returnVect
 
-# 手写数字识别系统的测试代码
 def handwritingClassTest():
+    '''
+    手写数字识别系统的测试代码
+    :return:
+    '''
     hwLabels = [] #手写数字标签向量
     trainingFileList = listdir('trainingDigits') # 获取训练数据集目录的文件列表
     m = len(trainingFileList) # 获取训练数据集的文件数量
