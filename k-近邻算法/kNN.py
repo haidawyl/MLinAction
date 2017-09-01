@@ -158,7 +158,7 @@ def img2vector(filename):
         # 遍历当前行的前32列
         for j in range(32):
             returnVect[0, 32*i+j] = int(lineStr[j]) # 将(32,32)的矩阵转换为(1,1024)的矩阵
-    return returnVect
+    return returnVect # 返回图像数据矩阵
 
 def handwritingClassTest():
     '''
