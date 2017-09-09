@@ -32,7 +32,7 @@ def selectJrand(i, m):
     '''
     j = i
     while(j == i):
-        j = int(random.uniform(0, m)) # 随机生成一个[0, m]范围内的实数, 并转换为整数
+        j = int(random.uniform(0, m)) # 随机生成一个[0, m)范围内的实数, 并转换为整数
     return j
 
 def clipAlpha(aj, H, L):
@@ -121,6 +121,7 @@ def smoSimple(dataMatIn, classLabels, C, toler, maxIter):
                     print 'L==H'
                     continue
                 # eta是alphas[j]的最优修改量
+                # eta = 2*X[i]*[j].T - X[i]*X[i].T - X[j]*X[j].T = -(X[i]-X[j])^2
                 eta = 2.0 * dataMatrix[i, :] * dataMatrix[j, :].T - dataMatrix[i, :] * dataMatrix[i, :].T - dataMatrix[j, :] * dataMatrix[j, :].T
                 if eta >= 0:
                     print 'eta>=0'
@@ -439,8 +440,14 @@ def testSMO():
     mpl.rcParams['font.sans-serif'] = [u'SimHei'] # 指定显示字体
     mpl.rcParams['axes.unicode_minus'] = False # 解决保存图像中负号'-'显示为方块的问题
     plt.figure(1, facecolor='white') # 创建一个新图形, 背景色设置为白色
-    plt.scatter(x1, y1, marker='o', alpha=1)
-    plt.scatter(x2, y2, marker='s', alpha=1)
+    plt.scatter(x1, y1, marker='^', alpha=1)
+    plt.scatter(x2, y2, marker='o', alpha=1)
+
+    X1 = np.arange(3.0, 7.0, 0.1)
+    # 令f(w.Tx+b)=0, 则x2=(-b-ws1*x1)/ws2
+    X2 = (-b - ws[0][0] * X1) / ws[1][0]
+    plt.plot(X1, np.array(X2)[0, :])
+
     plt.show()
 
 def kernelTrans(X, A, kTup):
@@ -614,6 +621,6 @@ def testDigits(kTup=('rbf', 10)):
     print 'the training error rate is: %f' % (float(errorCount)/m)
 
 if __name__=='__main__':
-    # testSMO()
+    testSMO()
     # testRbf()
-    testDigits()
+    # testDigits()
