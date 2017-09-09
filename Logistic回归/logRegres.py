@@ -58,7 +58,10 @@ def gradAscent(dataMatIn, classLabels):
         # 向量相减等于向量中对应的元素相减, 得到的结果还是向量
         # labelMat: m x 1
         # error: m x 1
+        # 梯度反方向=实际值-预测值
         error = (labelMat - h) # 计算真实类别与预测类别的差值
+        # 梯度方向=预测值-实际值
+        # error = (h - labelMat) # 计算真实类别与预测类别的差值
         # dataMatrix; m x n
         # dataMatrix.transpose(): n x m
         # error: m x 1
@@ -67,7 +70,10 @@ def gradAscent(dataMatIn, classLabels):
         # alpha * dataMatrix.transpose() * error: n x 1
         # weights: n x 1
         # 向量相加等于向量中对应的元素相加, 得到的结果还是向量
+        # 梯度上升算法(梯度反方向)
         weights = weights + alpha * dataMatrix.transpose() * error # 按照真实类别与预测类别的差值方向调整回归系数
+        # 梯度下降算法(梯度方向)
+        # weights = weights - alpha * dataMatrix.transpose() * error  # 按照真实类别与预测类别的差值方向调整回归系数
     return weights # 返回回归系数
 
 def plotBestFit(weights):
@@ -127,12 +133,15 @@ def stocGradAscent0(dataMatrix, classLabels, numIter=10):
         h = sigmoid(np.sum(dataMatrix[i%m] * weights)) # 得到预测类别的值
         # classLabels: 长度为m的列表
         # classLabels[i]: 列表的一个元素, 因此是一个数字
+        # 梯度方向=预测值-实际值
+        # 梯度反方向=实际值-预测值
         error = classLabels[i%m] - h # 计算真实类别与预测类别的差值
         # dataMatrix[i]; 长度为n的NumPy数组
         # 一个数字乘以一个NumPy数组等于该数字分别乘以数组中的每一个元素
         # error * dataMatrix[i%m]: 本次计算得到的梯度
         # weights: 长度为n的NumPy数组
         # NumPy数组加上NumPy数组等于数组中对应的元素相加, 得到的结果还是NumPy数组
+        # 梯度上升算法
         weights = weights + alpha * error * dataMatrix[i%m] # 按照真实类别与预测类别的差值方向调整回归系数
 
         x0.append([i, weights[0]])
@@ -329,8 +338,8 @@ def drawSigmoid():
     plt.show()
 
 if __name__=='__main__':
-    # testGradAscent()
+    testGradAscent()
     # testStocGradAscent0()
     # testStocGradAscent1()
-    multiTest()
+    # multiTest()
     # drawSigmoid()
