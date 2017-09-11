@@ -5,6 +5,8 @@ import numpy as np
 import random
 import feedparser
 import operator
+import matplotlib as mpl
+import matplotlib.pyplot as plt
 
 def loadDataSet():
     '''
@@ -209,14 +211,22 @@ def spamTest():
         trainClasses.append(classList[docIndex]) # 每封邮件对应的类别标签
     p0V, p1V, pSpam = trainNB0(np.array(trainMat), np.array(trainClasses)) # 计算分类所需的概率
     errorCount = 0 # 分类错误数
+    # 记录每个数据点的类别估计值的列向量, 初始值全部为0
+    testClassEst = np.zeros((len(testSet), 1))
+    index = 0
+    testClassLables = []
     for docIndex in testSet: # 遍历测试集
         wordVector = setOfWords2Vec(vocabList, docList[docIndex]) # 对每封邮件基于词汇表并使用setOfWords2Vec()函数来构建词向量
         predictClass = classifyNB(np.array(wordVector), p0V, p1V, pSpam) # 对每封邮件预测分类
+        testClassEst[index] = predictClass
+        testClassLables.append(classList[docIndex])
         if predictClass != classList[docIndex]: # 预测分类与真实分类进行比较
             errorCount += 1 # 如果分类错误则错误数+1
             print docList[docIndex]
             print '预测分类是', predictClass, ', 但实际分类却是', classList[docIndex]
     print 'the error rate is: ', float(errorCount)/len(testSet)
+
+    plotROC(np.mat(testClassEst).T, testClassLables, u'测试集ROC曲线')
 
 def calcMostFreq(vocabList, fullText):
     '''
@@ -305,9 +315,70 @@ def getTopWords(ny, sf):
     for item in sortedNY:
         print item[0]
 
+def plotROC(predStrengths, classLabels, title):
+    '''
+    <0.0, 0.0>: 将所有样例判为反例, 则TP=FP=0
+    <1.0, 1.0>: 将所有样例判为正例, 则FN=TN=0
+    x轴表示假阳率(FP/(FP+TN)), 在<0.0, 0.0>点假阳率等于0, 在<1.0, 1.0>点假阳率等于1
+    y轴表示真阳率(TP/(TP+FN)), 在<0.0, 0.0>点真阳率等于0, 在<1.0, 1.0>点真阳率等于1
+    :param predStrengths: 行向量, 表示分类结果的预测强度,
+    如果值为负数则值越小被判为反例的预测强度越高, 反之值为正数则值越大被判为正例的预测强度越高
+    :param classLabels: 类别标签
+    :return:
+    '''
+    cur = (1.0, 1.0) # 绘制光标的位置, 起始点为右上角<1.0, 1.0>的位置
+    ySum = 0.0 # 计算AUC(Area Under the Curve, ROC曲线下面的面积)的值
+    numPosClas = sum(np.array(classLabels) == 1.0) # 真实正例的数目
+    yStep = 1 / float(numPosClas) # y轴的步长
+    # len(classLabels) - numPosClas: 真实反例的数目
+    xStep = 1 / float(len(classLabels) - numPosClas) # x轴的步长
+    # 分类器的预测强度从小到大排序的索引列表
+    # 得到的是样本预测强度从小到大(从负数到正数)的样例的索引值列表
+    # 第一个索引指向的样例被判为反例的强度最高
+    # 最后一个索引指向的样例被判为正例的强度最高
+    sortedIndicies = predStrengths.argsort()
+    # print predStrengths[0, sortedIndicies]
+    mpl.rcParams['font.sans-serif'] = [u'SimHei'] # 指定显示字体
+    mpl.rcParams['axes.unicode_minus'] = False # 解决保存图像中负号'-'显示为方块的问题
+    fig = plt.figure()
+    fig.clf()
+    ax = plt.subplot(111)
+    # 遍历分类器的预测强度从小到大排序的索引列表
+    # 先从排名最低的样例开始, 所有排名更低的样例都被判为反例, 而所有排名更高的样例都被判为正例.
+    # 第一个值对应点为<1.0, 1.0>, 而最后一个值对应点为<0.0, 0.0>.
+    # 然后, 将其移到排名次低的样例中去, 如果该样例属于正例, 那么对真阳率进行修改;
+    # 如果该样例属于反例, 那么对假阳率进行修改.
+
+    # 初始时预测强度最小, 那么所有的样本都被判为正例, 即对应图中右上角的位置.
+    # 向后迭代的过程中, 预测强度依次增大, 则排名低(列表前面)的样本被判为反例, 排名高(列表后面)的样本被判为正例.
+    # 如果当前样本为真实正例, 在将其预测为反例时, 则为伪反例FN, 根据真阳率=TP/(TP+FN), 因此真阳率下降, 沿y轴下移
+    # 如果当前样本为真实反例, 在将其预测为反例时, 则为真反例TN, 根据假阳率=FP/(FP+TN), 因此假阳率下降, 沿x轴左移
+    for index in sortedIndicies.tolist()[0]:
+        if classLabels[index] == 1.0: # 标签为1.0的类即正例, 则要沿着y轴的方向下降一个步长, 也就是要不断降低真阳率
+            delX = 0
+            delY = yStep
+        else: # 标签为其它(0或者-1)的类即反例, 则要沿着x轴的方向倒退一个步长, 也就是要不断降低假阳率
+            delX = xStep
+            delY = 0
+            # 为了计算AUC, 需要对多个小矩形的面积进行累加. 这些小矩形的宽度是xStep, 因此可以先对所有矩形
+            # 的高度进行累加, 最后再乘以xStep得到其总面积. 所有高度的和(ySum)随着x轴的每次移动而渐次增加
+            ySum += cur[1]
+        # 一旦决定了是在x轴还是y轴方向上进行移动, 就可以在当前点和新点之间画出一条线段
+        ax.plot([cur[0], cur[0]-delX], [cur[1], cur[1]-delY], c='b')
+        # 更新当前点cur
+        cur = (cur[0]-delX, cur[1]-delY)
+    # 画出左下角到右上角之间的虚线
+    ax.plot([0, 1], [0, 1], 'b--')
+    plt.xlabel(u'假阳率(False Positive Rate)')
+    plt.ylabel(u'真阳率(True Positive Rate)')
+    plt.title(title)
+    ax.axis([0, 1, 0, 1])
+    plt.show()
+    print 'the Area Under the Curve is: ', ySum*xStep
+
 if __name__=="__main__":
     # testingNB()
-    # spamTest()
-    ny = feedparser.parse('http://newyork.craigslist.org/stp/index.rss')
-    sf = feedparser.parse('http://sfbay.craigslist.org/stp/index.rss')
-    getTopWords(ny, sf)
+    spamTest()
+    # ny = feedparser.parse('http://newyork.craigslist.org/stp/index.rss')
+    # sf = feedparser.parse('http://sfbay.craigslist.org/stp/index.rss')
+    # getTopWords(ny, sf)

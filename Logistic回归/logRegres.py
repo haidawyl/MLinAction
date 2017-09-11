@@ -83,22 +83,12 @@ def plotBestFit(weights):
     '''
     dataMat, labelMat = loadDataSet() # 读取数据集和类别标签
     dataArr = np.array(dataMat) # 将数据集转换成NumPy数组
-    n = np.shape(dataArr)[0] # 获取数据集的行数
-    xcord1 = []
-    ycord1 = []
-    xcord2 = []
-    ycord2 = []
-    for i in range(n): # 遍历数据集, 分开标签为0和1的数据
-        if int(labelMat[i]) == 1: # 标签为1的数据
-            xcord1.append(dataArr[i, 1])
-            ycord1.append(dataArr[i, 2])
-        else: # 标签为0的数据
-            xcord2.append(dataArr[i, 1])
-            ycord2.append(dataArr[i, 2])
+    trainingClassEst = np.mat(dataArr) * np.mat(weights)
+
     fig = plt.figure() # 画图
     ax = fig.add_subplot(111)
-    ax.scatter(xcord1, ycord1, s= 30, c='r', marker='s') # 画标签为1的散点图
-    ax.scatter(xcord2, ycord2, s= 30, c='g') # 画标签为0的散点图
+    ax.scatter(dataArr[np.array(labelMat) == 1.0][:, 1], dataArr[np.array(labelMat) == 1.0][:, 2], s= 30, c='r', marker='s') # 画标签为1的散点图
+    ax.scatter(dataArr[np.array(labelMat) == 0.0][:, 1], dataArr[np.array(labelMat) == 0.0][:, 2], s= 30, c='g') # 画标签为0的散点图
     # 创建区间为[-0.3, 0.3), 步长为0.1的等差numpy.ndarray数组
     x1 = np.arange(-3.0, 3.0, 0.1) # 我们要画的横轴数据
     # 此处令sigmoid函数为0. 0是两个分类(即类别l和类别0)的分界处. 因此我们设定0 = w0x0 + w1x1 + w2x2,
@@ -108,6 +98,8 @@ def plotBestFit(weights):
     plt.xlabel('X1')
     plt.ylabel('X2')
     plt.show()
+
+    plotROC(np.mat(trainingClassEst).T, labelMat, u'训练集ROC曲线')
 
 def stocGradAscent0(dataMatrix, classLabels, numIter=10):
     '''
@@ -120,10 +112,8 @@ def stocGradAscent0(dataMatrix, classLabels, numIter=10):
     alpha = 0.01 # 向目标移动的步长
     weights = np.ones(n) # 回归系数, 创建以1填充的长度为n的NumPy数组
 
-    # 记录回归系数每次改变后的值, 只记录前3维特征的回归系数变化情况
-    x0 = []
-    x1 = []
-    x2 = []
+    # 记录回归系数每次改变后的值的数组
+    weightsArr = []
     for i in range(m * numIter): # 遍历numIter次数据集
         # dataMatrix[i]; 长度为n的NumPy数组
         # weights; 长度为n的NumPy数组
@@ -144,22 +134,21 @@ def stocGradAscent0(dataMatrix, classLabels, numIter=10):
         # 梯度上升算法
         weights = weights + alpha * error * dataMatrix[i%m] # 按照真实类别与预测类别的差值方向调整回归系数
 
-        x0.append([i, weights[0]])
-        x1.append([i, weights[1]])
-        x2.append([i, weights[2]])
+        weightsArr.append(weights.copy())
 
     # 画出回归系数的变化情况
     mpl.rcParams['font.sans-serif'] = [u'SimHei'] # 指定显示字体
     mpl.rcParams['axes.unicode_minus'] = False # 解决保存图像中负号'-'显示为方块的问题
     plt.figure(1, facecolor='white', figsize=(6, 5)) # 创建一个新图形, 背景色设置为白色
     plt.subplot(311) # subplot(numRows, numCols, plotNum) 将整个绘图区域等分为numRows行* numCols列个子区域，然后按照从左到右，从上到下的顺序对每个子区域进行编号，左上的子区域的编号为1
-    plt.plot(np.mat(x0)[:, 0], np.mat(x0)[:, 1], alpha=0.5)
+    indexArr = range(len(weightsArr))
+    plt.plot(indexArr, np.mat(weightsArr)[:, 0], alpha=0.5)
     plt.ylabel('X0')
     plt.subplot(312)  # subplot(numRows, numCols, plotNum) 将整个绘图区域等分为numRows行* numCols列个子区域，然后按照从左到右，从上到下的顺序对每个子区域进行编号，左上的子区域的编号为1
-    plt.plot(np.mat(x1)[:, 0], np.mat(x1)[:, 1], alpha=0.5)
+    plt.plot(indexArr, np.mat(weightsArr)[:, 1], alpha=0.5)
     plt.ylabel('X1')
     plt.subplot(313)  # subplot(numRows, numCols, plotNum) 将整个绘图区域等分为numRows行* numCols列个子区域，然后按照从左到右，从上到下的顺序对每个子区域进行编号，左上的子区域的编号为1
-    plt.plot(np.mat(x2)[:, 0], np.mat(x2)[:, 1], alpha=0.5)
+    plt.plot(indexArr, np.mat(weightsArr)[:, 2], alpha=0.5)
     plt.ylabel('X2')
     plt.show()
 
@@ -176,10 +165,8 @@ def stocGradAscent1(dataMatrix, classLabels, numIter=150):
     m, n = np.shape(dataMatrix) # 取得数据集的行数和列数
     weights = np.ones(n) # 回归系数, 创建以1填充的长度为n的NumPy数组
 
-    # 记录回归系数每次改变后的值, 只记录前3维特征的回归系数变化情况
-    x0 = []
-    x1 = []
-    x2 = []
+    # 记录回归系数每次改变后的值的数组
+    weightsArr = []
     for j in range(numIter): # 遍历numIter次
         dataIndex = range(m) # 生成[0, m)的整数列表, 即为数据集索引值的列表
         for i in range(m): # 遍历整个数据集
@@ -209,22 +196,21 @@ def stocGradAscent1(dataMatrix, classLabels, numIter=150):
             weights = weights + alpha * error * dataMatrix[randIndex] # 按照真实类别与预测类别的差值方向调整回归系数
             del(dataIndex[randIndex]) # 删除dataIndex列表中已经使用过的元素, 下次计算梯度时不再使用该样本, 保证所有的样本数据都能够参与计算梯度
 
-            x0.append([j*m+i, weights[0]])
-            x1.append([j*m+i, weights[1]])
-            x2.append([j*m+i, weights[2]])
+            weightsArr.append(weights.copy())
 
     # 画出回归系数的变化情况
     mpl.rcParams['font.sans-serif'] = [u'SimHei'] # 指定显示字体
     mpl.rcParams['axes.unicode_minus'] = False # 解决保存图像中负号'-'显示为方块的问题
     plt.figure(1, facecolor='white', figsize=(6, 5)) # 创建一个新图形, 背景色设置为白色
     plt.subplot(311) # subplot(numRows, numCols, plotNum) 将整个绘图区域等分为numRows行* numCols列个子区域，然后按照从左到右，从上到下的顺序对每个子区域进行编号，左上的子区域的编号为1
-    plt.plot(np.mat(x0)[:, 0], np.mat(x0)[:, 1], alpha=0.5)
+    indexArr = range(len(weightsArr))
+    plt.plot(indexArr, np.mat(weightsArr)[:, 0], alpha=0.5)
     plt.ylabel('X0')
     plt.subplot(312)  # subplot(numRows, numCols, plotNum) 将整个绘图区域等分为numRows行* numCols列个子区域，然后按照从左到右，从上到下的顺序对每个子区域进行编号，左上的子区域的编号为1
-    plt.plot(np.mat(x1)[:, 0], np.mat(x1)[:, 1], alpha=0.5)
+    plt.plot(indexArr, np.mat(weightsArr)[:, 1], alpha=0.5)
     plt.ylabel('X1')
     plt.subplot(313)  # subplot(numRows, numCols, plotNum) 将整个绘图区域等分为numRows行* numCols列个子区域，然后按照从左到右，从上到下的顺序对每个子区域进行编号，左上的子区域的编号为1
-    plt.plot(np.mat(x2)[:, 0], np.mat(x2)[:, 1], alpha=0.5)
+    plt.plot(indexArr, np.mat(weightsArr)[:, 2], alpha=0.5)
     plt.ylabel('X2')
     plt.show()
 
@@ -247,7 +233,7 @@ def testStocGradAscent0():
     '''
     dataArr, labelMat = loadDataSet()
     weights = stocGradAscent0(np.array(dataArr), labelMat, numIter=200)
-    plotBestFit(weights)
+    plotBestFit(np.mat(weights).T.getA())
     print weights
 
 def testStocGradAscent1():
@@ -257,7 +243,7 @@ def testStocGradAscent1():
     '''
     dataArr, labelMat = loadDataSet()
     weights = stocGradAscent1(np.array(dataArr), labelMat, numIter=30)
-    plotBestFit(weights)
+    plotBestFit(np.mat(weights).T.getA())
     print weights
 
 def classifyVector(inX, weights):
@@ -337,9 +323,70 @@ def drawSigmoid():
 
     plt.show()
 
+def plotROC(predStrengths, classLabels, title):
+    '''
+    <0.0, 0.0>: 将所有样例判为反例, 则TP=FP=0
+    <1.0, 1.0>: 将所有样例判为正例, 则FN=TN=0
+    x轴表示假阳率(FP/(FP+TN)), 在<0.0, 0.0>点假阳率等于0, 在<1.0, 1.0>点假阳率等于1
+    y轴表示真阳率(TP/(TP+FN)), 在<0.0, 0.0>点真阳率等于0, 在<1.0, 1.0>点真阳率等于1
+    :param predStrengths: 行向量, 表示分类结果的预测强度,
+    如果值为负数则值越小被判为反例的预测强度越高, 反之值为正数则值越大被判为正例的预测强度越高
+    :param classLabels: 类别标签
+    :return:
+    '''
+    cur = (1.0, 1.0) # 绘制光标的位置, 起始点为右上角<1.0, 1.0>的位置
+    ySum = 0.0 # 计算AUC(Area Under the Curve, ROC曲线下面的面积)的值
+    numPosClas = sum(np.array(classLabels) == 1.0) # 真实正例的数目
+    yStep = 1 / float(numPosClas) # y轴的步长
+    # len(classLabels) - numPosClas: 真实反例的数目
+    xStep = 1 / float(len(classLabels) - numPosClas) # x轴的步长
+    # 分类器的预测强度从小到大排序的索引列表
+    # 得到的是样本预测强度从小到大(从负数到正数)的样例的索引值列表
+    # 第一个索引指向的样例被判为反例的强度最高
+    # 最后一个索引指向的样例被判为正例的强度最高
+    sortedIndicies = predStrengths.argsort()
+    # print predStrengths[0, sortedIndicies]
+    mpl.rcParams['font.sans-serif'] = [u'SimHei'] # 指定显示字体
+    mpl.rcParams['axes.unicode_minus'] = False # 解决保存图像中负号'-'显示为方块的问题
+    fig = plt.figure()
+    fig.clf()
+    ax = plt.subplot(111)
+    # 遍历分类器的预测强度从小到大排序的索引列表
+    # 先从排名最低的样例开始, 所有排名更低的样例都被判为反例, 而所有排名更高的样例都被判为正例.
+    # 第一个值对应点为<1.0, 1.0>, 而最后一个值对应点为<0.0, 0.0>.
+    # 然后, 将其移到排名次低的样例中去, 如果该样例属于正例, 那么对真阳率进行修改;
+    # 如果该样例属于反例, 那么对假阳率进行修改.
+
+    # 初始时预测强度最小, 那么所有的样本都被判为正例, 即对应图中右上角的位置.
+    # 向后迭代的过程中, 预测强度依次增大, 则排名低(列表前面)的样本被判为反例, 排名高(列表后面)的样本被判为正例.
+    # 如果当前样本为真实正例, 在将其预测为反例时, 则为伪反例FN, 根据真阳率=TP/(TP+FN), 因此真阳率下降, 沿y轴下移
+    # 如果当前样本为真实反例, 在将其预测为反例时, 则为真反例TN, 根据假阳率=FP/(FP+TN), 因此假阳率下降, 沿x轴左移
+    for index in sortedIndicies.tolist()[0]:
+        if classLabels[index] == 1.0: # 标签为1.0的类即正例, 则要沿着y轴的方向下降一个步长, 也就是要不断降低真阳率
+            delX = 0
+            delY = yStep
+        else: # 标签为其它(0或者-1)的类即反例, 则要沿着x轴的方向倒退一个步长, 也就是要不断降低假阳率
+            delX = xStep
+            delY = 0
+            # 为了计算AUC, 需要对多个小矩形的面积进行累加. 这些小矩形的宽度是xStep, 因此可以先对所有矩形
+            # 的高度进行累加, 最后再乘以xStep得到其总面积. 所有高度的和(ySum)随着x轴的每次移动而渐次增加
+            ySum += cur[1]
+        # 一旦决定了是在x轴还是y轴方向上进行移动, 就可以在当前点和新点之间画出一条线段
+        ax.plot([cur[0], cur[0]-delX], [cur[1], cur[1]-delY], c='b')
+        # 更新当前点cur
+        cur = (cur[0]-delX, cur[1]-delY)
+    # 画出左下角到右上角之间的虚线
+    ax.plot([0, 1], [0, 1], 'b--')
+    plt.xlabel(u'假阳率(False Positive Rate)')
+    plt.ylabel(u'真阳率(True Positive Rate)')
+    plt.title(title)
+    ax.axis([0, 1, 0, 1])
+    plt.show()
+    print 'the Area Under the Curve is: ', ySum*xStep
+
 if __name__=='__main__':
-    testGradAscent()
+    # testGradAscent()
     # testStocGradAscent0()
-    # testStocGradAscent1()
+    testStocGradAscent1()
     # multiTest()
     # drawSigmoid()

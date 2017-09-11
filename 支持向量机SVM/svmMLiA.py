@@ -422,33 +422,29 @@ def testSMO():
     print minVal, maxVal
 
     dataMat = np.mat(dataArr)
-    x1 = []
-    y1 = []
-    x2 = []
-    y2 = []
+    m = np.shape(dataMat)[0]
+    # 记录每个数据点的类别估计值的m行x1列的列向量, 初始值全部为0
+    trainingClassEst = np.zeros((m, 1))
     for i in range(len(dataArr)):
-        label = dataMat[i] * np.mat(ws) + b # 大于0属于+1类; 小于0属于-1类
-        # if label / abs(label) == labelArr[i]:
-        #     print 'label = ', label
-        if np.sign(label) > 0:
-            x1.append(dataMat[i, 0])
-            y1.append(dataMat[i, 1])
-        else:
-            x2.append(dataMat[i, 0])
-            y2.append(dataMat[i, 1])
+        predict = dataMat[i] * np.mat(ws) + b # 大于0属于+1类; 小于0属于-1类
+        trainingClassEst[i] = predict
+        if predict / abs(predict) != labelArr[i]:
+            print 'the real class is %d but the predicted class is %d' % (labelArr[i], predict)
 
     mpl.rcParams['font.sans-serif'] = [u'SimHei'] # 指定显示字体
     mpl.rcParams['axes.unicode_minus'] = False # 解决保存图像中负号'-'显示为方块的问题
     plt.figure(1, facecolor='white') # 创建一个新图形, 背景色设置为白色
-    plt.scatter(x1, y1, marker='^', alpha=1)
-    plt.scatter(x2, y2, marker='o', alpha=1)
+    plt.scatter(np.array(dataArr)[np.array(labelArr) > 0][:, 0], np.array(dataArr)[np.array(labelArr) > 0][:, 1], marker='^', alpha=1)
+    plt.scatter(np.array(dataArr)[np.array(labelArr) < 0][:, 0], np.array(dataArr)[np.array(labelArr) < 0][:, 1], marker='o', alpha=1)
 
-    X1 = np.arange(3.0, 7.0, 0.1)
+    X1 = np.arange(3.0, 6.0, 0.1)
     # 令f(w.Tx+b)=0, 则x2=(-b-ws1*x1)/ws2
     X2 = (-b - ws[0][0] * X1) / ws[1][0]
     plt.plot(X1, np.array(X2)[0, :])
 
     plt.show()
+
+    plotROC(np.mat(trainingClassEst).T, labelArr, u'训练集ROC曲线')
 
 def kernelTrans(X, A, kTup):
     '''
@@ -487,10 +483,8 @@ def testRbf(k1=1.3):
     print 'there are %d Support Vectors' % np.shape(sVs)[0]
     m, n = np.shape(dataMat) # 取得矩阵的行数和列数
     errorCount = 0 # 预测错误数
-    x1 = []
-    y1 = []
-    x2 = []
-    y2 = []
+    # 记录每个数据点的类别估计值的m行x1列的列向量, 初始值全部为0
+    trainingClassEst = np.zeros((m, 1))
     for i in range(m):
         # 此处仅使用了支持向量数据集, 为什么? 主要是因为非支持向量的alpha为0,
         # 在运算np.multiply(labelMat, alphas)时对应的列向量元素值为0, 然后其与使用核函数
@@ -498,23 +492,17 @@ def testRbf(k1=1.3):
         # 所以此处仅使用了支持向量进行运算.
         kernelEval = kernelTrans(sVs, dataMat[i, :], ('rbf', k1)) # 使用核函数转换原始数据
         predict = kernelEval.T * np.multiply(labelSV, alphas[svInd]) + b # 计算数据的预测值
+        trainingClassEst[i] = predict
         if np.sign(predict) != np.sign(labelArr[i]): # 预测值和实际值不同, 则错误数+1
             errorCount += 1
-        if np.sign(predict) > 0:
-            x1.append(dataMat[i, 0])
-            y1.append(dataMat[i, 1])
-        else:
-            x2.append(dataMat[i, 0])
-            y2.append(dataMat[i, 1])
     print 'the training error rate is: %f' % (float(errorCount)/m)
 
     mpl.rcParams['font.sans-serif'] = [u'SimHei'] # 指定显示字体
     mpl.rcParams['axes.unicode_minus'] = False # 解决保存图像中负号'-'显示为方块的问题
     plt.figure(1, facecolor='white', figsize=(6, 6)) # 创建一个新图形, 背景色设置为白色
-
     plt.subplot(211) # subplot(numRows, numCols, plotNum) 将整个绘图区域等分为numRows行* numCols列个子区域，然后按照从左到右，从上到下的顺序对每个子区域进行编号，左上的子区域的编号为1
-    plt.scatter(x1, y1, marker='o', alpha=0.5)
-    plt.scatter(x2, y2, marker='s', alpha=0.5)
+    plt.scatter(np.array(dataArr)[np.array(labelArr) > 0][:, 0], np.array(dataArr)[np.array(labelArr) > 0][:, 1], marker='o', alpha=0.5)
+    plt.scatter(np.array(dataArr)[np.array(labelArr) < 0][:, 0], np.array(dataArr)[np.array(labelArr) < 0][:, 1], marker='s', alpha=0.5)
     plt.title(u'训练数据集')
 
     dataArr, labelArr = loadDataSet('testSetRBF2.txt') # 在测试集上执行上述过程
@@ -522,28 +510,24 @@ def testRbf(k1=1.3):
     dataMat = np.mat(dataArr)
     labelMat = np.mat(labelArr).transpose()
     m, n = np.shape(dataMat)
-    x1 = []
-    y1 = []
-    x2 = []
-    y2 = []
+    # 记录每个数据点的类别估计值的m行x1列的列向量, 初始值全部为0
+    testClassEst = np.zeros((m, 1))
     for i in range(m):
         kernelEval = kernelTrans(sVs, dataMat[i, :], ('rbf', k1))
         predict = kernelEval.T * np.multiply(labelSV, alphas[svInd]) + b
+        testClassEst[i] = predict
         if np.sign(predict) != np.sign(labelArr[i]):
             errorCount += 1
-        if np.sign(predict) > 0:
-            x1.append(dataMat[i, 0])
-            y1.append(dataMat[i, 1])
-        else:
-            x2.append(dataMat[i, 0])
-            y2.append(dataMat[i, 1])
     print 'the test error rate is: %f' % (float(errorCount)/m)
 
     plt.subplot(212) # subplot(numRows, numCols, plotNum) 将整个绘图区域等分为numRows行* numCols列个子区域，然后按照从左到右，从上到下的顺序对每个子区域进行编号，左上的子区域的编号为1
-    plt.scatter(x1, y1, marker='o', alpha=0.5)
-    plt.scatter(x2, y2, marker='s', alpha=0.5)
+    plt.scatter(np.array(dataArr)[np.array(labelArr) > 0][:, 0], np.array(dataArr)[np.array(labelArr) > 0][:, 1], marker='o', alpha=0.5)
+    plt.scatter(np.array(dataArr)[np.array(labelArr) < 0][:, 0], np.array(dataArr)[np.array(labelArr) < 0][:, 1], marker='s', alpha=0.5)
     plt.title(u'测试数据集')
     plt.show()
+
+    plotROC(np.mat(trainingClassEst).T, labelArr, u'训练集ROC曲线')
+    plotROC(np.mat(testClassEst).T, labelArr, u'测试集ROC曲线')
 
 def img2vector(filename):
     '''
@@ -601,26 +585,95 @@ def testDigits(kTup=('rbf', 10)):
     print 'there are %d Support Vectors' % np.shape(sVs)[0]
     m, n = np.shape(dataMat) # 取得矩阵的行数和列数
     errorCount = 0 # 预测错误数
+    # 记录每个数据点的类别估计值的m行x1列的列向量, 初始值全部为0
+    trainingClassEst = np.zeros((m, 1))
     for i in range(m):
         kernelEval = kernelTrans(sVs, dataMat[i, :], kTup) # 使用核函数转换原始数据
         predict = kernelEval.T * np.multiply(labelSV, alphas[svInd]) + b # 计算数据的预测值
+        trainingClassEst[i] = predict
         if np.sign(predict) != np.sign(labelArr[i]): # 预测值和实际值不同, 则错误数+1
             errorCount += 1
     print 'the training error rate is: %f' % (float(errorCount)/m)
+    plotROC(np.mat(trainingClassEst).T, labelArr, u'训练集ROC曲线')
 
     dataArr, labelArr = loadImages('testDigits') # 获取测试数据集和类标签
     errorCount = 0 # 预测错误数
     dataMat = np.mat(dataArr)
     labelMat = np.mat(labelArr).transpose()
     m, n = np.shape(dataMat)
+    # 记录每个数据点的类别估计值的m行x1列的列向量, 初始值全部为0
+    testClassEst = np.zeros((m, 1))
     for i in range(m):
         kernelEval = kernelTrans(sVs, dataMat[i, :], kTup) # 使用核函数转换原始数据
         predict = kernelEval.T * np.multiply(labelSV, alphas[svInd]) + b # 计算数据的预测值
+        testClassEst[i] = predict
         if np.sign(predict) != np.sign(labelArr[i]): # 预测值和实际值不同, 则错误数+1
             errorCount += 1
     print 'the training error rate is: %f' % (float(errorCount)/m)
+    plotROC(np.mat(testClassEst).T, labelArr, u'测试集ROC曲线')
+
+def plotROC(predStrengths, classLabels, title):
+    '''
+    <0.0, 0.0>: 将所有样例判为反例, 则TP=FP=0
+    <1.0, 1.0>: 将所有样例判为正例, 则FN=TN=0
+    x轴表示假阳率(FP/(FP+TN)), 在<0.0, 0.0>点假阳率等于0, 在<1.0, 1.0>点假阳率等于1
+    y轴表示真阳率(TP/(TP+FN)), 在<0.0, 0.0>点真阳率等于0, 在<1.0, 1.0>点真阳率等于1
+    :param predStrengths: 行向量, 表示分类结果的预测强度,
+    如果值为负数则值越小被判为反例的预测强度越高, 反之值为正数则值越大被判为正例的预测强度越高
+    :param classLabels: 类别标签
+    :return:
+    '''
+    cur = (1.0, 1.0) # 绘制光标的位置, 起始点为右上角<1.0, 1.0>的位置
+    ySum = 0.0 # 计算AUC(Area Under the Curve, ROC曲线下面的面积)的值
+    numPosClas = sum(np.array(classLabels) == 1.0) # 真实正例的数目
+    yStep = 1 / float(numPosClas) # y轴的步长
+    # len(classLabels) - numPosClas: 真实反例的数目
+    xStep = 1 / float(len(classLabels) - numPosClas) # x轴的步长
+    # 分类器的预测强度从小到大排序的索引列表
+    # 得到的是样本预测强度从小到大(从负数到正数)的样例的索引值列表
+    # 第一个索引指向的样例被判为反例的强度最高
+    # 最后一个索引指向的样例被判为正例的强度最高
+    sortedIndicies = predStrengths.argsort()
+    # print predStrengths[0, sortedIndicies]
+    mpl.rcParams['font.sans-serif'] = [u'SimHei'] # 指定显示字体
+    mpl.rcParams['axes.unicode_minus'] = False # 解决保存图像中负号'-'显示为方块的问题
+    fig = plt.figure()
+    fig.clf()
+    ax = plt.subplot(111)
+    # 遍历分类器的预测强度从小到大排序的索引列表
+    # 先从排名最低的样例开始, 所有排名更低的样例都被判为反例, 而所有排名更高的样例都被判为正例.
+    # 第一个值对应点为<1.0, 1.0>, 而最后一个值对应点为<0.0, 0.0>.
+    # 然后, 将其移到排名次低的样例中去, 如果该样例属于正例, 那么对真阳率进行修改;
+    # 如果该样例属于反例, 那么对假阳率进行修改.
+
+    # 初始时预测强度最小, 那么所有的样本都被判为正例, 即对应图中右上角的位置.
+    # 向后迭代的过程中, 预测强度依次增大, 则排名低(列表前面)的样本被判为反例, 排名高(列表后面)的样本被判为正例.
+    # 如果当前样本为真实正例, 在将其预测为反例时, 则为伪反例FN, 根据真阳率=TP/(TP+FN), 因此真阳率下降, 沿y轴下移
+    # 如果当前样本为真实反例, 在将其预测为反例时, 则为真反例TN, 根据假阳率=FP/(FP+TN), 因此假阳率下降, 沿x轴左移
+    for index in sortedIndicies.tolist()[0]:
+        if classLabels[index] == 1.0: # 标签为1.0的类即正例, 则要沿着y轴的方向下降一个步长, 也就是要不断降低真阳率
+            delX = 0
+            delY = yStep
+        else: # 标签为其它(0或者-1)的类即反例, 则要沿着x轴的方向倒退一个步长, 也就是要不断降低假阳率
+            delX = xStep
+            delY = 0
+            # 为了计算AUC, 需要对多个小矩形的面积进行累加. 这些小矩形的宽度是xStep, 因此可以先对所有矩形
+            # 的高度进行累加, 最后再乘以xStep得到其总面积. 所有高度的和(ySum)随着x轴的每次移动而渐次增加
+            ySum += cur[1]
+        # 一旦决定了是在x轴还是y轴方向上进行移动, 就可以在当前点和新点之间画出一条线段
+        ax.plot([cur[0], cur[0]-delX], [cur[1], cur[1]-delY], c='b')
+        # 更新当前点cur
+        cur = (cur[0]-delX, cur[1]-delY)
+    # 画出左下角到右上角之间的虚线
+    ax.plot([0, 1], [0, 1], 'b--')
+    plt.xlabel(u'假阳率(False Positive Rate)')
+    plt.ylabel(u'真阳率(True Positive Rate)')
+    plt.title(title)
+    ax.axis([0, 1, 0, 1])
+    plt.show()
+    print 'the Area Under the Curve is: ', ySum*xStep
 
 if __name__=='__main__':
-    testSMO()
+    # testSMO()
     # testRbf()
-    # testDigits()
+    testDigits()
